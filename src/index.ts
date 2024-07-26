@@ -1,11 +1,52 @@
 import puppeteer from 'puppeteer';
 
-(async () => {
+interface CinemaRawData {
+  title: string;
+  duration: string;
+  times: string[];
+}
+
+interface CinemaDurationData {
+  title: string;
+  duration: number;
+  times: MovieTime[];
+}
+
+interface MovieTime {
+  start: Date;
+  end: Date;
+}
+
+function calculateEndTime(duration: string, times : string[]): MovieTime[] {
+  const [hours, minutes] = duration.split('h');
+  const durationInMinutes = parseInt(hours) * 60 + parseInt(minutes);
+
+  const movieTimes: MovieTime[] = times.map(time => {
+    const [hour, minute] = time.split(':');
+    const startTime = new Date();
+    startTime.setHours(parseInt(hour));
+    startTime.setMinutes(parseInt(minute));
+    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+    console.log(`Início: ${startTime.toLocaleTimeString()}, fim: ${endTime.toLocaleTimeString()}`);
+
+    return { start: startTime, end: endTime };
+  });
+
+  return movieTimes;
+
+
+}
+
+const  movieTimes = (async () => {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   const city = 'brasilia';
   const baseUrl = `https://www.ingresso.com/cinemas`;
-  let movieTimes = [];
+  let movieTimes: {
+    title: string;
+    duration: string;
+    times: string[];
+  }[] = [];
   const cinemas = [];
 
   await page.goto(`${baseUrl}?city=${city}`);
@@ -67,4 +108,10 @@ import puppeteer from 'puppeteer';
   }
 
   await browser.close();
+
+  const movieTimesWithEndTime = movieTimes.map(({ title, duration, times }) => {
+    return { title, duration, times: calculateEndTime(duration, times) };
+  });
+
+  return movieTimesWithEndTime;
 })();
