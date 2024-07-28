@@ -8,7 +8,7 @@ interface CinemaRawData {
 
 interface CinemaDurationData {
   title: string;
-  duration: number;
+  duration: string;
   times: MovieTime[];
 }
 
@@ -27,7 +27,7 @@ function calculateEndTime(duration: string, times : string[]): MovieTime[] {
     startTime.setHours(parseInt(hour));
     startTime.setMinutes(parseInt(minute));
     const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-    console.log(`Início: ${startTime.toLocaleTimeString()}, fim: ${endTime.toLocaleTimeString()}`);
+    //console.log(`Início: ${startTime.toLocaleTimeString()}, fim: ${endTime.toLocaleTimeString()}`);
 
     return { start: startTime, end: endTime };
   });
@@ -37,7 +37,7 @@ function calculateEndTime(duration: string, times : string[]): MovieTime[] {
 
 }
 
-const  movieTimes = (async () => {
+async function movieTimes(): Promise<CinemaDurationData[]> {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   const city = 'brasilia';
@@ -75,11 +75,18 @@ const  movieTimes = (async () => {
     console.log('Div principal não encontrada.');
   }
 
+  const movieListSelector = 'div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0';
+  
   if (cinemas.length > 0) {
     const cinema = cinemas[2];
     await page.goto(cinema.link);
+    const buttonDateSelector = "#splide01-slide04"
+    const buttonDate = await page.$(buttonDateSelector);
+    if (buttonDate) {
+      //await buttonDate.click();
+      await page.waitForSelector(movieListSelector);
+    }
 
-    const movieListSelector = 'div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0';
     const movieList = await page.$(movieListSelector);
 
     if (movieList) {
@@ -114,4 +121,51 @@ const  movieTimes = (async () => {
   });
 
   return movieTimesWithEndTime;
+};
+
+function intervalScheduler(cinemaDurationData: CinemaDurationData[]) {
+    const agenda = [];
+    const allMovies: {
+        title: string;
+        start: Date;
+        end: Date;
+    }[] = [];
+    const watchedStatus: Record<string, boolean> = {};
+
+    // Coletar todos os filmes e inicializar a contagem de exibições
+    cinemaDurationData.forEach((data) => {
+      data.times.forEach((time) => {
+        allMovies.push({ title: data.title, start: time.start, end: time.end });
+      });
+    });
+  
+  
+
+    // Sort movies by a composite score of end time and session count
+    allMovies.sort((a, b) => {
+      return a.end.getTime() - b.end.getTime();
+    }
+    );
+    for (let i = 0; i < allMovies.length; i++) {
+      console.log(`Filme: ${allMovies[i].title}, início: ${allMovies[i].start.toLocaleTimeString()}, fim: ${allMovies[i].end.toLocaleTimeString()}`);
+    }
+
+    agenda.push(allMovies[0]);
+    watchedStatus[allMovies[0].title] = true;
+  
+    for (let i = 1; i < allMovies.length; i++) {
+      const lastMovie = agenda[agenda.length - 1];
+      if (allMovies[i].start.getTime() >= lastMovie.end.getTime() && !watchedStatus[allMovies[i].title]) {
+        agenda.push(allMovies[i]);
+        watchedStatus[allMovies[i].title] = true;
+      }
+    }
+    return agenda;
+  }
+(async () => {
+  const times = await movieTimes();
+  const agenda = intervalScheduler(times);
+  for (let i = 0; i < agenda.length; i++) {
+    console.log(`Filme: ${agenda[i].title}, início: ${agenda[i].start.toLocaleTimeString()}, fim: ${agenda[i].end.toLocaleTimeString()}`);
+  }
 })();
