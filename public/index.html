@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Rush</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #agenda {
+            margin-top: 20px;
+        }
+        .movie {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .movie img {
+            width: 100px;
+            height: 150px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+        }
+        .movie-details {
+            flex: 1;
+        }
+        .movie-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .movie-time {
+            font-size: 14px;
+            color: #666;
+        }
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Movie Rush</h1>
+        <div class="form-group">
+            <label for="cinema">Escolha o cinema:</label>
+            <select id="cinema">
+                <option value="" disabled selected>Escolha o cinema</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="day">Escolha um dia:</label>
+            <select id="day">
+                <option value="" disabled selected>Escolha um dia</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <input type="checkbox" id="repeat" name="repeat" value="true" checked>
+            <label for="repeat">Repetir filmes</label>
+        </div>
+        <button id="fetchSchedule">Gerar agenda</button>
+        <div id="agenda">
+        </div>
+    </div>
+
+    <script>
+        const cinemaSelect = document.getElementById('cinema');
+        const daySelect = document.getElementById('day');
+        const fetchScheduleButton = document.getElementById('fetchSchedule');
+        const agendaContainer = document.getElementById('agenda');
+        const repeatCheckbox = document.getElementById('repeat');
+
+        async function fetchCinemas() {
+            try {
+                const response = await fetch('http://localhost:3000/api/cinemas');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const cinemas = await response.json();
+                console.log(cinemas);
+
+                cinemas.forEach(cinema => {
+                    const option = document.createElement('option');
+                    option.value = cinema.link;
+                    option.textContent = cinema.name;
+                    cinemaSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching cinemas:', error);
+            }
+        }
+
+        async function fetchAvailableDays(cinemaLink) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/cinema/avaliable_days?cinema=${encodeURIComponent(cinemaLink)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const days = await response.json();
+                console.log(days);
+
+                daySelect.innerHTML = '<option value="" disabled selected>Select a day</option>';
+
+                days.forEach(day => {
+                    const option = document.createElement('option');
+                    option.value = day.index;
+                    option.textContent = day.date;
+                    daySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching available days:', error);
+            }
+        }
+
+        async function fetchSchedule() {
+            const cinemaLink = cinemaSelect.value;
+            const day = daySelect.value;
+            const repeat = repeatCheckbox.checked;
+
+            if (!cinemaLink || !day) {
+                alert('Please select both cinema and day.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/schedule?cinema=${encodeURIComponent(cinemaLink)}&day=${day}&repeat=${repeat}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const schedule = await response.json();
+
+                agendaContainer.innerHTML = '';
+                schedule.forEach(movie => {
+                    const movieDiv = document.createElement('div');
+                    movieDiv.className = 'movie';
+                    movieDiv.innerHTML = `
+                        <img src="${movie.img}" alt="${movie.title}">
+                        <div class="movie-details">
+                            <h3 class="movie-title">${movie.title}</h3>
+                            <p class="movie-time">Start: ${new Date(movie.start).toLocaleTimeString()}</p>
+                            <p class="movie-time">End: ${new Date(movie.end).toLocaleTimeString()}</p>
+                        </div>
+                    `;
+                    agendaContainer.appendChild(movieDiv);
+                });
+            } catch (error) {
+                console.error('Error fetching schedule:', error);
+            }
+        }
+
+        cinemaSelect.addEventListener('change', (event) => {
+            const cinemaLink = event.target.value;
+            fetchAvailableDays(cinemaLink);
+        });
+
+        fetchScheduleButton.addEventListener('click', fetchSchedule);
+        fetchCinemas();
+    </script>
+</body>
+</html>

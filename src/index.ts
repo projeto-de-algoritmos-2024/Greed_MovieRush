@@ -1,15 +1,18 @@
+import express, { Request, Response } from 'express';
+import path from 'path';
 import puppeteer from 'puppeteer';
+import cors from 'cors';
 
-interface CinemaRawData {
-  title: string;
-  duration: string;
-  times: string[];
+interface Cinema {
+  name: string;
+  link: string;
 }
 
 interface CinemaDurationData {
   title: string;
   duration: string;
   times: MovieTime[];
+  img: string;
 }
 
 interface MovieTime {
@@ -17,155 +20,156 @@ interface MovieTime {
   end: Date;
 }
 
-function calculateEndTime(duration: string, times : string[]): MovieTime[] {
-  const [hours, minutes] = duration.split('h');
-  const durationInMinutes = parseInt(hours) * 60 + parseInt(minutes);
-
-  const movieTimes: MovieTime[] = times.map(time => {
-    const [hour, minute] = time.split(':');
-    const startTime = new Date();
-    startTime.setHours(parseInt(hour));
-    startTime.setMinutes(parseInt(minute));
-    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-    //console.log(`Início: ${startTime.toLocaleTimeString()}, fim: ${endTime.toLocaleTimeString()}`);
-
-    return { start: startTime, end: endTime };
-  });
-
-  return movieTimes;
-
-
+interface Schedule {
+  title: string;
+  start: Date;
+  end: Date;
+  img: string;
 }
 
-async function movieTimes(): Promise<CinemaDurationData[]> {
-  const browser = await puppeteer.launch({ headless: true });
-  const page = await browser.newPage();
-  const city = 'brasilia';
-  const baseUrl = `https://www.ingresso.com/cinemas`;
-  let movieTimes: {
-    title: string;
-    duration: string;
-    times: string[];
-  }[] = [];
-  const cinemas = [];
+const app = express();
+const port = 3000;
 
-  await page.goto(`${baseUrl}?city=${city}`);
+app.use(cors());
+app.use(express.static('public'));
 
-  const mainDivSelector = 'div.mx-0.mb-\\[30px\\].mt-\\[10px\\].flex.flex-col.lg\\:mx-\\[5px\\].lg\\:flex-row.lg\\:flex-wrap';
-  const allDivs = await page.$$(mainDivSelector);
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
-  if (allDivs.length > 1) {
-    const secondDiv = allDivs[1];
-    console.log('Segunda div encontrada!');
+app.get('/api/cinemas', async (req: Request, res: Response) => {
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    const city = 'brasilia';
+    const baseUrl = `https://www.ingresso.com/cinemas`;
 
-    const subDivSelector = '.bg-ing-neutral-600';
-    const subDivs = await secondDiv.$$(subDivSelector);
+    await page.goto(`${baseUrl}?city=${city}`);
 
-    console.log(`Encontradas ${subDivs.length} sub-divs.`);
+    const cinemas: Cinema[] = await page.evaluate(() => {
+      const mainDivSelector = 'div.mx-0.mb-\\[30px\\].mt-\\[10px\\].flex.flex-col.lg\\:mx-\\[5px\\].lg\\:flex-row.lg\\:flex-wrap';
+      const cinemaElements = document.querySelectorAll(mainDivSelector + ' .bg-ing-neutral-600');
+      return Array.from(cinemaElements).map(element => {
+        const link = (element.querySelector('a') as HTMLAnchorElement)?.href || '';
+        const name = element.querySelector('h3')?.innerText || '';
+        return { name, link };
+      });
+    });
 
-    for (let i = 0; i < subDivs.length; i++) {
-      const link = await subDivs[i].$('a');
-      if (link) {
-        const href = await page.evaluate(a => a.href, link);
-        const cinemaName = await page.evaluate(a => a.querySelector('h3')?.innerText, link);
-        cinemas.push({ name: cinemaName, link: href });
-      }
-    }
-  } else {
-    console.log('Div principal não encontrada.');
+    await browser.close();
+    res.json(cinemas);
+  } catch (error) {
+    console.error('Error fetching cinemas:', error);
+    res.status(500).send('Internal Server Error');
   }
+});
 
-  const movieListSelector = 'div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0';
-  
-  if (cinemas.length > 0) {
-    const cinema = cinemas[2];
-    await page.goto(cinema.link);
-    const buttonDateSelector = "#splide01-slide04"
-    const buttonDate = await page.$(buttonDateSelector);
-    if (buttonDate) {
-      //await buttonDate.click();
-      await page.waitForSelector(movieListSelector);
-    }
+app.get('/api/cinema/avaliable_days', async (req: Request, res: Response) => {
+  try {
+    const { cinema } = req.query;
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-    const movieList = await page.$(movieListSelector);
+    await page.goto(cinema as string);
 
-    if (movieList) {
-      const movies = await page.evaluate(movieList => {
-        return Array.from(movieList.children).map(child => child.innerHTML);
-      }, movieList);
+    const days = await page.evaluate(() => {
+      const slideList = document.querySelector('.splide__list');
+      return slideList ? Array.from(slideList.children).map((slide, index) => {
+        const date = slide.querySelector('span')?.innerText || '';
+        return { date, index };
+      }) : [];
+    });
 
-      console.log(`Encontradas ${movies.length} divs diretamente filhas da movie list.`);
+    await browser.close();
+    res.json(days);
+  } catch (error) {
+    console.error('Error fetching available days:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
-      movieTimes = await page.evaluate(() => {
-        const movies = Array.from(document.querySelectorAll('div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0 > div'));
-        return movies.map(movie => {
-          const title = movie.querySelector('h3 a')?.innerText || 'Título não encontrado';
-          const duration = movie.querySelector('p')?.innerText || 'Duração não encontrada';
-          const times = Array.from(movie.querySelectorAll('a > div > span')).map(span => span.innerText);
-          return { title, duration, times };
+app.get('/api/schedule', async (req: Request, res: Response) => {
+  try {
+    const { cinema, day, repeat } = req.query;
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    await page.goto(cinema as string);
+
+    await page.evaluate((day) => {
+      document.querySelector(`.splide__list > div:nth-child(${Number(day) + 1}) > div`)?.click();
+    }, day);
+
+    await page.waitForSelector('div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0');
+
+    const movieTimes: CinemaDurationData[] = await page.evaluate(() => {
+      const movies = Array.from(document.querySelectorAll('div.mx-3.my-5.sm\\:mb-8.lg\\:mx-0 > div'));
+      return movies.map(movie => {
+        const title = movie.querySelector('h3 a')?.innerText || 'Título não encontrado';
+        const duration = movie.querySelector('p')?.innerText || 'Duração não encontrada';
+        const times = Array.from(movie.querySelectorAll('a > div > span')).map(span => span.innerText);
+        const img = movie.querySelector('img')?.src || '';
+        return { title, duration, times, img };
+      });
+    });
+
+    const calculateEndTime = (duration: string, times: string[]): MovieTime[] => {
+      const [hours, minutes] = duration.split('h');
+      const durationInMinutes = parseInt(hours) * 60 + parseInt(minutes);
+
+      return times.map(time => {
+        const [hour, minute] = time.split(':');
+        const startTime = new Date();
+        startTime.setHours(parseInt(hour));
+        startTime.setMinutes(parseInt(minute));
+        const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+        return { start: startTime, end: endTime };
+      });
+    };
+
+    const movieTimesWithEndTime: CinemaDurationData[] = movieTimes.map(({ title, duration, times, img }) => {
+      return { title, duration, times: calculateEndTime(duration, times), img };
+    });
+
+    const intervalScheduler = (cinemaDurationData: CinemaDurationData[]) => {
+      const agenda: Schedule[] = [];
+      const allMovies: Schedule[] = [];
+      const watchedStatus: Record<string, boolean> = {};
+
+      cinemaDurationData.forEach((data) => {
+        data.times.forEach((time) => {
+          allMovies.push({ title: data.title, start: time.start, end: time.end, img: data.img });
         });
       });
 
-      console.log('Horários dos filmes:', movieTimes);
-    } else {
-      console.log('Movie list não encontrada.');
-    }
-  } else {
-    console.log('Nenhum cinema encontrado.');
-  }
+      allMovies.sort((a, b) => a.end.getTime() - b.end.getTime());
 
-  await browser.close();
+      for (let i = 0; i < allMovies.length; i++) {
+        const currentMovie = allMovies[i];
+        if (
+          (agenda.length === 0 || currentMovie.start.getTime() >= agenda[agenda.length - 1].end.getTime()) 
+        ) {
 
-  const movieTimesWithEndTime = movieTimes.map(({ title, duration, times }) => {
-    return { title, duration, times: calculateEndTime(duration, times) };
-  });
-
-  return movieTimesWithEndTime;
-};
-
-function intervalScheduler(cinemaDurationData: CinemaDurationData[]) {
-    const agenda = [];
-    const allMovies: {
-        title: string;
-        start: Date;
-        end: Date;
-    }[] = [];
-    const watchedStatus: Record<string, boolean> = {};
-
-    // Coletar todos os filmes e inicializar a contagem de exibições
-    cinemaDurationData.forEach((data) => {
-      data.times.forEach((time) => {
-        allMovies.push({ title: data.title, start: time.start, end: time.end });
-      });
-    });
-  
-  
-
-    // Sort movies by a composite score of end time and session count
-    allMovies.sort((a, b) => {
-      return a.end.getTime() - b.end.getTime();
-    }
-    );
-    for (let i = 0; i < allMovies.length; i++) {
-      console.log(`Filme: ${allMovies[i].title}, início: ${allMovies[i].start.toLocaleTimeString()}, fim: ${allMovies[i].end.toLocaleTimeString()}`);
-    }
-
-    agenda.push(allMovies[0]);
-    watchedStatus[allMovies[0].title] = true;
-  
-    for (let i = 1; i < allMovies.length; i++) {
-      const lastMovie = agenda[agenda.length - 1];
-      if (allMovies[i].start.getTime() >= lastMovie.end.getTime() && !watchedStatus[allMovies[i].title]) {
-        agenda.push(allMovies[i]);
-        watchedStatus[allMovies[i].title] = true;
+          if (repeat === "true" || !watchedStatus[currentMovie.title]) {
+            agenda.push(currentMovie);
+            watchedStatus[currentMovie.title] = true;
+          }
+        }
       }
-    }
-    return agenda;
+
+      return agenda;
+    };
+
+    const scheduledMovies = intervalScheduler(movieTimesWithEndTime);
+
+    await browser.close();
+    res.json(scheduledMovies);
+  } catch (error) {
+    console.error('Error fetching schedule:', error);
+    res.status(500).send('Internal Server Error');
   }
-(async () => {
-  const times = await movieTimes();
-  const agenda = intervalScheduler(times);
-  for (let i = 0; i < agenda.length; i++) {
-    console.log(`Filme: ${agenda[i].title}, início: ${agenda[i].start.toLocaleTimeString()}, fim: ${agenda[i].end.toLocaleTimeString()}`);
-  }
-})();
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
