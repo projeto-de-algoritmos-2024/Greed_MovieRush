@@ -41,8 +41,8 @@ Este projeto consiste em uma aplicação web que permite aos usuários visualiza
 
 1. **Clone o repositório:**
    ```sh
-   git clone https://github.com/projeto-de-algoritmos-2024/Greedy_MovieRush.git
-   cd Greedy_MovieRush
+   git clone https://github.com/projeto-de-algoritmos-2024/Greed_MovieRush.git
+   cd Greed_MovieRush
    ```
 
 2. **Instale as dependências:**
