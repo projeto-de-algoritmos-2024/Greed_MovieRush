@@ -1,45 +1,58 @@
-**!! Atenção: Renomeie o seu repositório para (Tema)_(NomeDoProjeto). !!** 
+# MovieRush
 
-Temas:
- - Grafos1
- - Grafos2
- - PD
- - D&C
- - Greed
- - Final 
- 
- **!! *Não coloque os nomes dos alunos no título do repositório*. Exemplo de título correto: Grafos2_Labirinto-do-Minotauro !!**
- 
- (Apague essa seção)
-
-# NomedoProjeto
-
-**Número da Lista**: X<br>
-**Conteúdo da Disciplina**: XXXXXXXXXX<br>
+**Número da Lista**: 22<br>
+**Conteúdo da Disciplina**: Algoritmos ambiciosos<br>
 
 ## Alunos
-|Matrícula | Aluno |
-| -- | -- |
-| xx/xxxxxx  |  xxxx xxxx xxxxx |
-| xx/xxxxxx  |  xxxx xxxx xxxxx |
+
+| Matrícula  | Aluno                      |
+| ---------- | -------------------------- |
+| 21/1031646 | Bruno Medeiros de Oliveira |
+| 21/1031762 | Leonardo Lago Moreno       |
 
 ## Sobre 
-Descreva os objetivos do seu projeto e como ele funciona. 
+Este projeto consiste em uma aplicação web que permite aos usuários visualizar a programação de filmes de um cinema específico em um dia escolhido. O usuário pode selecionar um cinema e um dia, e a aplicação exibirá os filmes disponíveis, incluindo a imagem do banner, horário de início e término. Há também uma opção para permitir ou não a repetição de filmes na programação.
 
 ## Screenshots
 Adicione 3 ou mais screenshots do projeto em funcionamento.
 
+
+## Vídeo
+
+
+
 ## Instalação 
-**Linguagem**: xxxxxx<br>
-**Framework**: (caso exista)<br>
-Descreva os pré-requisitos para rodar o seu projeto e os comandos necessários.
+
+### tecnologias utilizadas
+- **Frontend:** HTML, CSS e JavaScript.
+- **Backend:** Node.js com Express.
+- **Web Scraping:** Puppeteer para coletar dados dos cinemas e dos filmes.
+- **CORS:** Para permitir o acesso de recursos entre diferentes origens.
+
+
+1. **Clone o repositório:**
+   ```sh
+   git clone <URL_DO_REPOSITORIO>
+   cd <NOME_DO_REPOSITORIO>
+   ```
+
+2. **Instale as dependências:**
+   ```sh
+   npm install
+   ```
+
+4. **Inicie o servidor:**
+   ```sh
+   npm dev
+   ```
+
+   O servidor estará rodando na porta 3000.
+
+
 
 ## Uso 
-Explique como usar seu projeto caso haja algum passo a passo após o comando de execução.
+1. **Acesse a aplicação:**
+   - Abra o seu navegador e vá para `http://localhost:3000`.
 
-## Outros 
-Quaisquer outras informações sobre seu projeto podem ser descritas abaixo.
-
-
-
-
+2. **Selecione um cinema e um dia:**
+    - Escolha um cinema e um dia nos campos de seleção e clique em "Buscar".
