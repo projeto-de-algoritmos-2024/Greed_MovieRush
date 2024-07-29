@@ -14,12 +14,21 @@
 Este projeto consiste em uma aplicação web que permite aos usuários visualizar a programação de filmes de um cinema específico em um dia escolhido. O usuário pode selecionar um cinema e um dia, e a aplicação exibirá os filmes disponíveis, incluindo a imagem do banner, horário de início e término. Há também uma opção para permitir ou não a repetição de filmes na programação.
 
 ## Screenshots
-Adicione 3 ou mais screenshots do projeto em funcionamento.
+
+### Tela inicial
+![Captura de Tela 2024-07-28 às 23 05 13](https://github.com/user-attachments/assets/c4800e6f-2e10-4769-a212-600c11411279)
+
+### Filmes repitidos
+![Captura de Tela 2024-07-28 às 23 06 21](https://github.com/user-attachments/assets/ba79cd56-a9ec-4dfe-9483-469d68882dbb)
+
+### Filmes únicos
+![Captura de Tela 2024-07-28 às 23 07 44](https://github.com/user-attachments/assets/4fa04e70-21ee-47c0-99e1-fba3582f322f)
+
 
 
 ## Vídeo
 
-
+[![Ver video](https://img.youtube.com/vi/y4sf1JrlKJc/0.jpg)](https://www.youtube.com/watch?v=y4sf1JrlKJc)
 
 ## Instalação 
 
@@ -32,8 +41,8 @@ Adicione 3 ou mais screenshots do projeto em funcionamento.
 
 1. **Clone o repositório:**
    ```sh
-   git clone <URL_DO_REPOSITORIO>
-   cd <NOME_DO_REPOSITORIO>
+   git clone https://github.com/projeto-de-algoritmos-2024/Greedy_MovieRush.git
+   cd Greedy_MovieRush
    ```
 
 2. **Instale as dependências:**
